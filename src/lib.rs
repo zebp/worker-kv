@@ -20,7 +20,7 @@ pub struct KvStore {
 }
 
 impl KvStore {
-    pub fn create(binding: impl AsRef<str>) -> Result<Self, KvError> {
+    pub fn create(binding: &str) -> Result<Self, KvError> {
         let this: Object = get(&global(), binding.as_ref())?.into();
         Ok(Self {
             get_function: get(&this, "get")?.into(),
@@ -32,8 +32,8 @@ impl KvStore {
         })
     }
 
-    pub async fn get(&self, name: impl AsRef<str>) -> Result<KvValue, KvError> {
-        let name = JsValue::from(name.as_ref());
+    pub async fn get(&self, name: &str) -> Result<KvValue, KvError> {
+        let name = JsValue::from(name);
         let promise: Promise = self.get_function.call1(&self.this, &name)?.into();
         let inner = JsFuture::from(promise)
             .await
@@ -45,9 +45,9 @@ impl KvStore {
 
     pub async fn get_with_metadata<M: DeserializeOwned>(
         &self,
-        name: impl AsRef<str>,
+        name: &str,
     ) -> Result<(KvValue, M), KvError> {
-        let name = JsValue::from(name.as_ref());
+        let name = JsValue::from(name);
         let promise: Promise = self.get_with_meta_function.call1(&self.this, &name)?.into();
         let pair = JsFuture::from(promise).await?;
 
@@ -65,13 +65,13 @@ impl KvStore {
 
     pub fn put<T: ToRawKvValue>(
         &self,
-        name: impl AsRef<str>,
-        value: &T,
+        name: &str,
+        value: T,
     ) -> Result<PutOptionsBuilder, KvError> {
         Ok(PutOptionsBuilder {
             this: self.this.clone(),
             put_function: self.put_function.clone(),
-            name: JsValue::from(name.as_ref()),
+            name: JsValue::from(name),
             value: value.raw_kv_value()?,
             expiration: None,
             expiration_ttl: None,
@@ -89,8 +89,8 @@ impl KvStore {
         }
     }
 
-    pub async fn delete(&self, name: impl AsRef<str>) -> Result<(), KvError> {
-        let name = JsValue::from(name.as_ref());
+    pub async fn delete(&self, name: &str) -> Result<(), KvError> {
+        let name = JsValue::from(name);
         let promise: Promise = self.get_function.call1(&self.this, &name)?.into();
         JsFuture::from(promise).await?;
         Ok(())
