@@ -21,14 +21,13 @@ pub struct KvStore {
 
 impl KvStore {
     pub fn create(binding: impl AsRef<str>) -> Result<Self, KvError> {
-        let binding = JsValue::from(binding.as_ref());
-        let this: Object = Reflect::get(&global(), &binding)?.into();
+        let this: Object = get(&global(), binding.as_ref())?.into();
         Ok(Self {
-            get_function: Reflect::get(&this, &JsValue::from("get"))?.into(),
-            get_with_meta_function: Reflect::get(&this, &JsValue::from("getWithMetadata"))?.into(),
-            put_function: Reflect::get(&this, &JsValue::from("put"))?.into(),
-            list_function: Reflect::get(&this, &JsValue::from("list"))?.into(),
-            delete_function: Reflect::get(&this, &JsValue::from("delete"))?.into(),
+            get_function: get(&this, "get")?.into(),
+            get_with_meta_function: get(&this, "getWithMetadata")?.into(),
+            put_function: get(&this, "put")?.into(),
+            list_function: get(&this, "list")?.into(),
+            delete_function: get(&this, "delete")?.into(),
             this,
         })
     }
@@ -52,8 +51,8 @@ impl KvStore {
         let promise: Promise = self.get_with_meta_function.call1(&self.this, &name)?.into();
         let pair = JsFuture::from(promise).await?;
 
-        let value = Reflect::get(&pair, &JsValue::from("value"))?;
-        let metadata = Reflect::get(&pair, &JsValue::from("metadata"))?;
+        let value = get(&pair, "value")?;
+        let metadata = get(&pair, "metadata")?;
         let metadata = metadata
             .as_string()
             .expect("get request resulted in non-string metadata");
@@ -184,4 +183,8 @@ impl<T: Serialize> ToRawKvValue for T {
         let serialized = serde_json::to_string(self)?;
         Ok(JsValue::from(serialized))
     }
+}
+
+fn get(target: &JsValue, name: &str) -> Result<JsValue, JsValue> {
+    Reflect::get(target, &JsValue::from(name))
 }
