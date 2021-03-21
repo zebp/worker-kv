@@ -3,6 +3,9 @@ name = "worker-kv"
 version = "0.1.0"
 authors = ["Zeb Piasecki <zeb@zebulon.dev>"]
 edition = "2018"
+description = "Rust bindings to Cloudflare Worker KV Stores."
+repository = "https://github.com/vlakreeh/worker-kv"
+license = "Unlicense"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
