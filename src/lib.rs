@@ -1,79 +1,120 @@
-use std::collections::HashMap;
+mod builder;
 
-use js_sys::{global, Function, Object, Promise, Reflect, JSON};
-use serde::{Deserialize, Serialize};
+pub use builder::*;
+
+use js_sys::{global, Function, Object, Promise, Reflect};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::Value;
 use wasm_bindgen::JsValue;
 use wasm_bindgen_futures::JsFuture;
 
+/// A binding to a Cloudflare KvStore.
 #[derive(Clone)]
-pub struct KV {
-    this: Object,
-    get_function: Function,
-    put_function: Function,
-    list_function: Function,
+pub struct KvStore {
+    pub(crate) this: Object,
+    pub(crate) get_function: Function,
+    pub(crate) get_with_meta_function: Function,
+    pub(crate) put_function: Function,
+    pub(crate) list_function: Function,
+    pub(crate) delete_function: Function,
 }
 
-impl KV {
-    pub fn new(name: impl AsRef<str>) -> Result<Self, KvError> {
-        let name = JsValue::from(name.as_ref());
-        let this: Object = Reflect::get(&global(), &name)?.into();
+impl KvStore {
+    pub fn new(binding: impl AsRef<str>) -> Result<Self, KvError> {
+        let binding = JsValue::from(binding.as_ref());
+        let this: Object = Reflect::get(&global(), &binding)?.into();
         Ok(Self {
             get_function: Reflect::get(&this, &JsValue::from("get"))?.into(),
+            get_with_meta_function: Reflect::get(&this, &JsValue::from("getWithMetadata"))?.into(),
             put_function: Reflect::get(&this, &JsValue::from("put"))?.into(),
             list_function: Reflect::get(&this, &JsValue::from("list"))?.into(),
+            delete_function: Reflect::get(&this, &JsValue::from("delete"))?.into(),
             this,
         })
     }
 
-    pub async fn get(&self, name: impl AsRef<str>) -> Result<JsValue, KvError> {
+    pub async fn get(&self, name: impl AsRef<str>) -> Result<KvValue, KvError> {
         let name = JsValue::from(name.as_ref());
         let promise: Promise = self.get_function.call1(&self.this, &name)?.into();
-        JsFuture::from(promise).await.map_err(KvError::from)
+        let inner = JsFuture::from(promise)
+            .await
+            .map_err(KvError::from)?
+            .as_string()
+            .expect("get request resulted in non-string value");
+        Ok(KvValue(inner))
     }
 
-    pub async fn put<T: KvValue>(
+    pub async fn get_with_metadata<M: DeserializeOwned>(
         &self,
         name: impl AsRef<str>,
-        value: T,
-    ) -> Result<JsValue, KvError> {
+    ) -> Result<(KvValue, M), KvError> {
         let name = JsValue::from(name.as_ref());
-        let promise: Promise = self
-            .put_function
-            .call2(&self.this, &name, &value.raw_kv_value())?
-            .into();
-        JsFuture::from(promise).await.map_err(KvError::from)
-    }
+        let promise: Promise = self.get_with_meta_function.call1(&self.this, &name)?.into();
+        let pair = JsFuture::from(promise).await?;
 
-    pub async fn list(&self) -> Result<ListResponse, KvError> {
-        self.list_with_options(ListOptions::default()).await
-    }
-
-    pub async fn list_with_options(&self, options: ListOptions) -> Result<ListResponse, KvError> {
-        let options_string = serde_json::to_string(&options)?;
-        let options_object = JSON::parse(&options_string)?;
-
-        let promise: Promise = self
-            .list_function
-            .call1(&self.this, &options_object)?
-            .into();
-        let json_value = JSON::stringify(&JsFuture::from(promise).await?)?
+        let value = Reflect::get(&pair, &JsValue::from("value"))?;
+        let metadata = Reflect::get(&pair, &JsValue::from("metadata"))?;
+        let metadata = metadata
             .as_string()
-            .unwrap();
-        serde_json::from_str(&json_value).map_err(KvError::from)
+            .expect("get request resulted in non-string metadata");
+        let metadata = serde_json::from_str(&metadata)?;
+        let inner = value
+            .as_string()
+            .expect("get request resulted in non-string value");
+        Ok((KvValue(inner), metadata))
+    }
+
+    pub fn put<T: ToRawKvValue>(
+        &self,
+        name: impl AsRef<str>,
+        value: &T,
+    ) -> Result<PutOptionsBuilder, KvError> {
+        Ok(PutOptionsBuilder {
+            this: self.this.clone(),
+            put_function: self.put_function.clone(),
+            name: JsValue::from(name.as_ref()),
+            value: value.raw_kv_value()?,
+            expiration: None,
+            expiration_ttl: None,
+            metadata: None,
+        })
+    }
+
+    pub fn list(&self) -> ListOptionsBuilder {
+        ListOptionsBuilder {
+            this: self.this.clone(),
+            list_function: self.list_function.clone(),
+            limit: None,
+            cursor: None,
+            prefix: None,
+        }
+    }
+
+    pub async fn delete(&self, name: impl AsRef<str>) -> Result<(), KvError> {
+        let name = JsValue::from(name.as_ref());
+        let promise: Promise = self.get_function.call1(&self.this, &name)?.into();
+        JsFuture::from(promise).await?;
+        Ok(())
     }
 }
 
-/// Optional information that can be used when listing keys in the store.
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct ListOptions {
-    /// The maximum number of keys returned. The default is 1000, which is the maximum. It is
-    /// unlikely that you will want to change this default, but it is included for completeness.
-    limit: Option<u64>,
-    /// A string returned by a previous response used to paginate the keys in the store.
-    cursor: Option<String>,
-    /// A prefix that all keys must start with for them to be included in the response.
-    prefix: Option<String>,
+/// A value fetched via a get request.
+#[derive(Debug, Clone)]
+pub struct KvValue(String);
+
+impl KvValue {
+    /// Gets the value as a string.
+    pub fn as_string(self) -> String {
+        self.0
+    }
+    /// Tries to eserialize the inner text to the generic type.
+    pub fn as_json<T: DeserializeOwned>(self) -> Result<T, KvError> {
+        serde_json::from_str(&self.0).map_err(KvError::from)
+    }
+    /// Gets the value as a byte slice.
+    pub fn as_bytes<'a>(&'a self) -> &'a [u8] {
+        self.0.as_bytes()
+    }
 }
 
 /// The response for listing the elements in a KV store.
@@ -93,12 +134,13 @@ pub struct Key {
     /// The name of the key.
     pub name: String,
     /// When (expressed as a [unix timestamp](https://en.wikipedia.org/wiki/Unix_time)) the key
-    /// value pair will expire in the database.
+    /// value pair will expire in the store.
     pub expiration: Option<u64>,
     /// All metadata associated with the key.
-    pub metdata: Option<HashMap<String, Value>>,
+    pub metdata: Option<Value>,
 }
 
+/// A simple error type that can occur during kv operations.
 #[derive(Debug)]
 pub enum KvError {
     JavaScript(JsValue),
@@ -126,12 +168,20 @@ impl From<serde_json::Error> for KvError {
     }
 }
 
-pub trait KvValue {
-    fn raw_kv_value(&self) -> JsValue;
+/// A trait for things that can be converted to [`wasm_bindgen::JsValue`] to be passed to the kv.
+pub trait ToRawKvValue {
+    fn raw_kv_value(&self) -> Result<JsValue, KvError>;
 }
 
-impl KvValue for str {
-    fn raw_kv_value(&self) -> JsValue {
-        JsValue::from(self)
+impl ToRawKvValue for str {
+    fn raw_kv_value(&self) -> Result<JsValue, KvError> {
+        Ok(JsValue::from(self))
+    }
+}
+
+impl<T: Serialize> ToRawKvValue for T {
+    fn raw_kv_value(&self) -> Result<JsValue, KvError> {
+        let serialized = serde_json::to_string(self)?;
+        Ok(JsValue::from(serialized))
     }
 }
