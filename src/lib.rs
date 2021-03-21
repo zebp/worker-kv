@@ -1,3 +1,22 @@
+//! Bindings to Cloudflare Worker's [KV](https://developers.cloudflare.com/workers/runtime-apis/kv)
+//! to be used ***inside*** of a worker's context.
+//!
+//! # Example
+//! ```no_run
+//! let kv = KvStore::create("Example")?;
+//! 
+//! // Insert a new entry into the kv.
+//! kv.put("example_key", "example_value")
+//!     .metadata(vec![1, 2, 3, 4]) // Use some arbitrary serialiazable metadata
+//!     .execute()
+//!     .await?;
+//!
+//! // NOTE: kv changes can take a minute to become visible to other workers.
+//! // Get that same metadata.
+//! let (value, metdata) = kv.get_with_metadata::<Vec<usize>>("example_key").await?;
+//! ```
+#[forbid(missing_docs)]
+
 mod builder;
 
 pub use builder::*;
@@ -20,6 +39,7 @@ pub struct KvStore {
 }
 
 impl KvStore {
+    /// Creates a new [`KvStore`] with the binding specified in your `wrangler.toml`.
     pub fn create(binding: &str) -> Result<Self, KvError> {
         let this: Object = get(&global(), binding.as_ref())?.into();
         Ok(Self {
@@ -32,6 +52,7 @@ impl KvStore {
         })
     }
 
+    /// Fetches the value from the kv store by name.
     pub async fn get(&self, name: &str) -> Result<KvValue, KvError> {
         let name = JsValue::from(name);
         let promise: Promise = self.get_function.call1(&self.this, &name)?.into();
@@ -43,6 +64,7 @@ impl KvStore {
         Ok(KvValue(inner))
     }
 
+    /// Fetches the value and associated metadata from the kv store by name.
     pub async fn get_with_metadata<M: DeserializeOwned>(
         &self,
         name: &str,
@@ -63,11 +85,8 @@ impl KvStore {
         Ok((KvValue(inner), metadata))
     }
 
-    pub fn put<T: ToRawKvValue>(
-        &self,
-        name: &str,
-        value: T,
-    ) -> Result<PutOptionsBuilder, KvError> {
+    /// Puts data into the kv store.
+    pub fn put<T: ToRawKvValue>(&self, name: &str, value: T) -> Result<PutOptionsBuilder, KvError> {
         Ok(PutOptionsBuilder {
             this: self.this.clone(),
             put_function: self.put_function.clone(),
@@ -79,6 +98,7 @@ impl KvStore {
         })
     }
 
+    /// Lists the keys in the kv store.
     pub fn list(&self) -> ListOptionsBuilder {
         ListOptionsBuilder {
             this: self.this.clone(),
@@ -89,6 +109,7 @@ impl KvStore {
         }
     }
 
+    /// Deletes a key in the kv store.
     pub async fn delete(&self, name: &str) -> Result<(), KvError> {
         let name = JsValue::from(name);
         let promise: Promise = self.get_function.call1(&self.this, &name)?.into();
