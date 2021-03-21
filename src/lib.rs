@@ -20,7 +20,7 @@ pub struct KvStore {
 }
 
 impl KvStore {
-    pub fn new(binding: impl AsRef<str>) -> Result<Self, KvError> {
+    pub fn create(binding: impl AsRef<str>) -> Result<Self, KvError> {
         let binding = JsValue::from(binding.as_ref());
         let this: Object = Reflect::get(&global(), &binding)?.into();
         Ok(Self {
