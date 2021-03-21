@@ -1,0 +1,2 @@
+# worker-kv
+Rust bindings to Cloudflare Worker [KV Stores](https://developers.cloudflare.com/workers/runtime-apis/kv) using [wasm-bindgen](https://docs.rs/wasm-bindgen) and [js-sys](https://docs.rs/js-sys).
