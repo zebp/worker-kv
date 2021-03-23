@@ -13,7 +13,7 @@
 //!
 //! // NOTE: kv changes can take a minute to become visible to other workers.
 //! // Get that same metadata.
-//! let (value, metdata) = kv.get_with_metadata::<Vec<usize>>("example_key").await?;
+//! let (value, metadata) = kv.get_with_metadata::<Vec<usize>>("example_key").await?;
 //! ```
 #[forbid(missing_docs)]
 
@@ -21,7 +21,7 @@ mod builder;
 
 pub use builder::*;
 
-use js_sys::{global, Function, Object, Promise, Reflect};
+use js_sys::{Function, JSON, Object, Promise, Reflect, global};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::Value;
 use wasm_bindgen::JsValue;
@@ -75,9 +75,9 @@ impl KvStore {
 
         let value = get(&pair, "value")?;
         let metadata = get(&pair, "metadata")?;
-        let metadata = metadata
+        let metadata = JSON::stringify(&metadata)?
             .as_string()
-            .expect("get request resulted in non-string metadata");
+            .expect("JSON.stringify returned non-string value");
         let metadata = serde_json::from_str(&metadata)?;
         let inner = value
             .as_string()
@@ -112,7 +112,7 @@ impl KvStore {
     /// Deletes a key in the kv store.
     pub async fn delete(&self, name: &str) -> Result<(), KvError> {
         let name = JsValue::from(name);
-        let promise: Promise = self.get_function.call1(&self.this, &name)?.into();
+        let promise: Promise = self.delete_function.call1(&self.this, &name)?.into();
         JsFuture::from(promise).await?;
         Ok(())
     }
@@ -157,7 +157,7 @@ pub struct Key {
     /// value pair will expire in the store.
     pub expiration: Option<u64>,
     /// All metadata associated with the key.
-    pub metdata: Option<Value>,
+    pub metadata: Option<Value>,
 }
 
 /// A simple error type that can occur during kv operations.

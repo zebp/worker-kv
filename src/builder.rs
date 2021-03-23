@@ -17,9 +17,12 @@ pub struct PutOptionsBuilder {
     pub(crate) name: JsValue,
     #[serde(skip)]
     pub(crate) value: JsValue,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) expiration: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "expirationTtl")]
     pub(crate) expiration_ttl: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) metadata: Option<Value>,
 }
 
@@ -63,8 +66,11 @@ pub struct ListOptionsBuilder {
     pub(crate) this: Object,
     #[serde(skip)]
     pub(crate) list_function: Function,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) limit: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) cursor: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) prefix: Option<String>,
 }
 
