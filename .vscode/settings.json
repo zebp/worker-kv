@@ -1,0 +1,4 @@
+{
+  // Enables rust analyzer in the example project.
+  "rust-analyzer.linkedProjects": ["Cargo.toml", "example/Cargo.toml"]
+}

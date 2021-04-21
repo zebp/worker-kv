@@ -29,6 +29,8 @@ kv.put("example_key", "example_value")
 let (value, metdata) = kv.get_with_metadata::<Vec<usize>>("example_key").await?;
 ```
 
+For a more complete example check out the full [example](example).
+
 ## How do I use futures in WebAssembly?
 
 There currently is not a way to use a [Future](https://doc.rust-lang.org/stable/std/future/trait.Future.html) natively from WebAssembly but with the [future_to_promise](https://docs.rs/wasm-bindgen-futures/0.4.22/wasm_bindgen_futures/fn.future_to_promise.html) function from [wasm_bindgen_futures](https://docs.rs/wasm_bindgen_futures) we can convert it to a standard JavaScript promise, which can be awaited in the regular JavaScript context.
