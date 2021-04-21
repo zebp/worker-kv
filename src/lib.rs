@@ -20,7 +20,7 @@ mod builder;
 
 pub use builder::*;
 
-use js_sys::{global, Function, Object, Promise, Reflect, JSON};
+use js_sys::{global, Function, Object, Promise, Reflect};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::Value;
 use wasm_bindgen::JsValue;
@@ -72,16 +72,12 @@ impl KvStore {
         let promise: Promise = self.get_with_meta_function.call1(&self.this, &name)?.into();
         let pair = JsFuture::from(promise).await?;
 
-        let value = get(&pair, "value")?;
         let metadata = get(&pair, "metadata")?;
-        let metadata = JSON::stringify(&metadata)?
-            .as_string()
-            .expect("JSON.stringify returned non-string value");
-        let metadata = serde_json::from_str(&metadata)?;
+        let value = get(&pair, "value")?;
         let inner = value
             .as_string()
             .expect("get request resulted in non-string value");
-        Ok((KvValue(inner), metadata))
+        Ok((KvValue(inner), metadata.into_serde()?))
     }
 
     /// Puts data into the kv store.

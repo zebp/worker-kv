@@ -1,4 +1,4 @@
-use js_sys::{Function, Object, Promise, JSON};
+use js_sys::{Function, Object, Promise};
 use serde::Serialize;
 use serde_json::Value;
 use wasm_bindgen::JsValue;
@@ -45,9 +45,7 @@ impl PutOptionsBuilder {
     }
     /// Puts the value in the kv store.
     pub async fn execute(self) -> Result<(), KvError> {
-        let options_string = serde_json::to_string(&self)?;
-        let options_object = JSON::parse(&options_string)?;
-
+        let options_object = JsValue::from_serde(&self)?;
         let promise: Promise = self
             .put_function
             .call3(&self.this, &self.name, &self.value, &options_object)?
@@ -93,16 +91,14 @@ impl ListOptionsBuilder {
     }
     /// Lists the key value pairs in the kv store.
     pub async fn execute(self) -> Result<ListResponse, KvError> {
-        let options_string = serde_json::to_string(&self)?;
-        let options_object = JSON::parse(&options_string)?;
-
+        let options_object = JsValue::from_serde(&self)?;
         let promise: Promise = self
             .list_function
             .call1(&self.this, &options_object)?
             .into();
-        let json_value = JSON::stringify(&JsFuture::from(promise).await?)?
-            .as_string()
-            .unwrap();
-        serde_json::from_str(&json_value).map_err(KvError::from)
+        JsFuture::from(promise)
+            .await?
+            .into_serde()
+            .map_err(KvError::from)
     }
 }
