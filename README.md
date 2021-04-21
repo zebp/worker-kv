@@ -1,4 +1,5 @@
 # worker-kv
+
 [![Docs.rs][docs-badge]][docs-url]
 [![Crates.io][crates-badge]][crates-url]
 [![Unlicense][license-badge]][license-url]
@@ -6,7 +7,7 @@
 [crates-badge]: https://img.shields.io/crates/v/worker-kv.svg
 [crates-url]: https://crates.io/crates/worker-kv
 [license-badge]: https://img.shields.io/badge/license-Unlicense-blue.svg
-[license-url]: https://github.com/vlakreeh/worker-kv/blob/master/LICENSE
+[license-url]: https://github.com/zebp/worker-kv/blob/master/LICENSE
 [docs-badge]: https://img.shields.io/badge/docs.rs-rustdoc-green
 [docs-url]: https://docs.rs/worker-kv/
 
