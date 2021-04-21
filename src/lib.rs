@@ -4,7 +4,7 @@
 //! # Example
 //! ```no_run
 //! let kv = KvStore::create("Example")?;
-//! 
+//!
 //! // Insert a new entry into the kv.
 //! kv.put("example_key", "example_value")
 //!     .metadata(vec![1, 2, 3, 4]) // Use some arbitrary serialiazable metadata
@@ -16,12 +16,11 @@
 //! let (value, metadata) = kv.get_with_metadata::<Vec<usize>>("example_key").await?;
 //! ```
 #[forbid(missing_docs)]
-
 mod builder;
 
 pub use builder::*;
 
-use js_sys::{Function, JSON, Object, Promise, Reflect, global};
+use js_sys::{global, Function, Object, Promise, Reflect, JSON};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::Value;
 use wasm_bindgen::JsValue;
