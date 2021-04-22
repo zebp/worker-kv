@@ -204,8 +204,7 @@ impl ToRawKvValue for str {
 
 impl<T: Serialize> ToRawKvValue for T {
     fn raw_kv_value(&self) -> Result<JsValue, KvError> {
-        let serialized = serde_json::to_string(self)?;
-        Ok(JsValue::from(serialized))
+        JsValue::from_serde(self).map_err(Into::into)
     }
 }
 
