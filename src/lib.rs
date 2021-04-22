@@ -40,15 +40,21 @@ pub struct KvStore {
 impl KvStore {
     /// Creates a new [`KvStore`] with the binding specified in your `wrangler.toml`.
     pub fn create(binding: &str) -> Result<Self, KvError> {
-        let this: Object = get(&global(), binding.as_ref())?.into();
-        Ok(Self {
-            get_function: get(&this, "get")?.into(),
-            get_with_meta_function: get(&this, "getWithMetadata")?.into(),
-            put_function: get(&this, "put")?.into(),
-            list_function: get(&this, "list")?.into(),
-            delete_function: get(&this, "delete")?.into(),
-            this,
-        })
+        let this = get(&global(), binding.as_ref())?;
+
+        // Ensures that the kv store exists.
+        if this.is_undefined() {
+            Err(KvError::InvalidKvStore(binding.into()))
+        } else {
+            Ok(Self {
+                get_function: get(&this, "get")?.into(),
+                get_with_meta_function: get(&this, "getWithMetadata")?.into(),
+                put_function: get(&this, "put")?.into(),
+                list_function: get(&this, "list")?.into(),
+                delete_function: get(&this, "delete")?.into(),
+                this: this.into(),
+            })
+        }
     }
 
     /// Fetches the value from the kv store by name.
@@ -160,6 +166,7 @@ pub struct Key {
 pub enum KvError {
     JavaScript(JsValue),
     Serialization(serde_json::Error),
+    InvalidKvStore(String),
 }
 
 impl Into<JsValue> for KvError {
@@ -167,6 +174,7 @@ impl Into<JsValue> for KvError {
         match self {
             Self::JavaScript(value) => value,
             Self::Serialization(e) => format!("KvError::Serialization: {}", e.to_string()).into(),
+            Self::InvalidKvStore(binding) => format!("KvError::InvalidKvStore: {}", binding).into(),
         }
     }
 }
