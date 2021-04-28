@@ -58,15 +58,15 @@ impl KvStore {
     }
 
     /// Fetches the value from the kv store by name.
-    pub async fn get(&self, name: &str) -> Result<KvValue, KvError> {
+    pub async fn get(&self, name: &str) -> Result<Option<KvValue>, KvError> {
         let name = JsValue::from(name);
         let promise: Promise = self.get_function.call1(&self.this, &name)?.into();
         let inner = JsFuture::from(promise)
             .await
             .map_err(KvError::from)?
             .as_string()
-            .expect("get request resulted in non-string value");
-        Ok(KvValue(inner))
+            .map(KvValue);
+        Ok(inner)
     }
 
     /// Fetches the value and associated metadata from the kv store by name.
