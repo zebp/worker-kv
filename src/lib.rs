@@ -65,7 +65,7 @@ impl KvStore {
             .await
             .map_err(KvError::from)?
             .as_string()
-            .ok_or(KvError::ValueNotPresented)?;
+            .expect("get request resulted in non-string value");
         Ok(KvValue(inner))
     }
 
@@ -167,7 +167,6 @@ pub enum KvError {
     JavaScript(JsValue),
     Serialization(serde_json::Error),
     InvalidKvStore(String),
-    ValueNotPresented,
 }
 
 impl Into<JsValue> for KvError {
@@ -176,7 +175,6 @@ impl Into<JsValue> for KvError {
             Self::JavaScript(value) => value,
             Self::Serialization(e) => format!("KvError::Serialization: {}", e.to_string()).into(),
             Self::InvalidKvStore(binding) => format!("KvError::InvalidKvStore: {}", binding).into(),
-            Self::ValueNotPresented => "KvError::ValueNotPresented".into(),
         }
     }
 }
