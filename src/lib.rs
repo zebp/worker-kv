@@ -73,17 +73,23 @@ impl KvStore {
     pub async fn get_with_metadata<M: DeserializeOwned>(
         &self,
         name: &str,
-    ) -> Result<(KvValue, M), KvError> {
+    ) -> Result<Option<(KvValue, M)>, KvError> {
         let name = JsValue::from(name);
         let promise: Promise = self.get_with_meta_function.call1(&self.this, &name)?.into();
         let pair = JsFuture::from(promise).await?;
 
         let metadata = get(&pair, "metadata")?;
         let value = get(&pair, "value")?;
-        let inner = value
-            .as_string()
-            .expect("get request resulted in non-string value");
-        Ok((KvValue(inner), metadata.into_serde()?))
+
+        if metadata.is_null() || metadata.is_undefined() {
+            return Err(KvError::InvalidMetadata(
+                "metadata was undefined or null".into(),
+            ));
+        }
+
+        let metadata = metadata.into_serde::<M>()?;
+        let inner = value.as_string().map(|raw| (KvValue(raw), metadata));
+        Ok(inner)
     }
 
     /// Puts data into the kv store.
@@ -167,6 +173,7 @@ pub enum KvError {
     JavaScript(JsValue),
     Serialization(serde_json::Error),
     InvalidKvStore(String),
+    InvalidMetadata(String),
 }
 
 impl Into<JsValue> for KvError {
@@ -175,6 +182,9 @@ impl Into<JsValue> for KvError {
             Self::JavaScript(value) => value,
             Self::Serialization(e) => format!("KvError::Serialization: {}", e.to_string()).into(),
             Self::InvalidKvStore(binding) => format!("KvError::InvalidKvStore: {}", binding).into(),
+            Self::InvalidMetadata(message) => {
+                format!("KvError::InvalidMetadata: {}", message).into()
+            }
         }
     }
 }
