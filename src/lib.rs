@@ -2,7 +2,7 @@
 //! to be used ***inside*** of a worker's context.
 //!
 //! # Example
-//! ```no_run
+//! ```ignore
 //! let kv = KvStore::create("Example")?;
 //!
 //! // Insert a new entry into the kv.
@@ -13,7 +13,7 @@
 //!
 //! // NOTE: kv changes can take a minute to become visible to other workers.
 //! // Get that same metadata.
-//! let (value, metadata) = kv.get_with_metadata::<Vec<usize>>("example_key").await?;
+//! let (value, metadata) = kv.get_with_metadata::<Vec<usize>>("example_key").await?.unwrap();
 //! ```
 #[forbid(missing_docs)]
 mod builder;
