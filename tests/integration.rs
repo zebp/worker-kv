@@ -68,7 +68,9 @@ fn wait_for_worker_to_spawn() {
     while Instant::now() - now <= Duration::from_secs(60) {
         match TcpStream::connect_timeout(&addr, Duration::from_secs(5)) {
             Ok(_) => return,
-            Err(e) if e.kind() == ErrorKind::ConnectionRefused => {}
+            Err(e)
+                if e.kind() == ErrorKind::ConnectionRefused
+                    || e.kind() == ErrorKind::ConnectionReset => {}
             Err(e) => Err(e).expect("unexpected error connecting to worker"),
         }
     }
