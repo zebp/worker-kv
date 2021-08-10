@@ -2,12 +2,15 @@
 
 [![Docs.rs][docs-badge]][docs-url]
 [![Crates.io][crates-badge]][crates-url]
-[![Unlicense][license-badge]][license-url]
+[![MIT][mit-license-badge]][mit-license-url]
+[![Apache 2][apache-license-badge]][apache-license-url]
 
 [crates-badge]: https://img.shields.io/crates/v/worker-kv.svg
 [crates-url]: https://crates.io/crates/worker-kv
-[license-badge]: https://img.shields.io/badge/license-Unlicense-blue.svg
-[license-url]: https://github.com/zebp/worker-kv/blob/master/LICENSE
+[mit-license-badge]: https://img.shields.io/badge/license-MIT-blue.svg
+[apache-license-badge]: https://img.shields.io/badge/license-Apache2-blue.svg
+[mit-license-url]: https://github.com/zebp/worker-kv/blob/master/LICENSE-MIT
+[apache-license-url]: https://github.com/zebp/worker-kv/blob/master/LICENSE-APACHE
 [docs-badge]: https://img.shields.io/badge/docs.rs-rustdoc-green
 [docs-url]: https://docs.rs/worker-kv/
 
@@ -16,10 +19,10 @@ Rust bindings to Cloudflare Worker [KV Stores](https://developers.cloudflare.com
 ## Example
 
 ```rust
-let kv = KvStore::create("Example")?;
+let kv = KvStore::create("Example")?; // or KvStore::from_this(&this, "Example") if using modules format Workers
 
 // Insert a new entry into the kv.
-kv.put("example_key", "example_value")
+kv.put("example_key", "example_value")?
     .metadata(vec![1, 2, 3, 4]) // Use some arbitrary serialiazable metadata
     .execute()
     .await?;
