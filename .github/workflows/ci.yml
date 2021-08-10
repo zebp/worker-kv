@@ -19,7 +19,9 @@ jobs:
       - name: Update package repository
         run: sudo apt update
       - name: Install packages
-        run: sudo apt install -y build-essential libssl-dev nodejs
+        run: |
+          sudo apt clean
+          sudo apt install -y build-essential libssl-dev nodejs
 
       - name: Install wrangler
         run: |

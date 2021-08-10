@@ -200,8 +200,12 @@ impl From<KvError> for JsValue {
     fn from(val: KvError) -> Self {
         match val {
             KvError::JavaScript(value) => value,
-            KvError::Serialization(e) => format!("KvError::Serialization: {}", e.to_string()).into(),
-            KvError::InvalidKvStore(binding) => format!("KvError::InvalidKvStore: {}", binding).into(),
+            KvError::Serialization(e) => {
+                format!("KvError::Serialization: {}", e.to_string()).into()
+            }
+            KvError::InvalidKvStore(binding) => {
+                format!("KvError::InvalidKvStore: {}", binding).into()
+            }
             KvError::InvalidMetadata(message) => {
                 format!("KvError::InvalidMetadata: {}", message).into()
             }
