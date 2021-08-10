@@ -40,7 +40,7 @@ pub struct KvStore {
 impl KvStore {
     /// Creates a new [`KvStore`] with the binding specified in your `wrangler.toml`.
     pub fn create(binding: &str) -> Result<Self, KvError> {
-        let this = get(&global(), binding.as_ref())?;
+        let this = get(&global(), binding)?;
 
         // Ensures that the kv store exists.
         if this.is_undefined() {
@@ -60,7 +60,7 @@ impl KvStore {
     /// Creates a new [`KvStore`] with the binding specified in your `wrangler.toml`, using an
     /// alternative `this` value for arbitrary binding contexts.
     pub fn from_this(this: &JsValue, binding: &str) -> Result<Self, KvError> {
-        let this = get(&this, binding.as_ref())?;
+        let this = get(this, binding)?;
 
         // Ensures that the kv store exists.
         if this.is_undefined() {
@@ -159,7 +159,7 @@ impl KvValue {
         serde_json::from_str(&self.0).map_err(KvError::from)
     }
     /// Gets the value as a byte slice.
-    pub fn as_bytes<'a>(&'a self) -> &'a [u8] {
+    pub fn as_bytes(&self) -> &[u8] {
         self.0.as_bytes()
     }
 }
@@ -196,13 +196,13 @@ pub enum KvError {
     InvalidMetadata(String),
 }
 
-impl Into<JsValue> for KvError {
-    fn into(self) -> JsValue {
-        match self {
-            Self::JavaScript(value) => value,
-            Self::Serialization(e) => format!("KvError::Serialization: {}", e.to_string()).into(),
-            Self::InvalidKvStore(binding) => format!("KvError::InvalidKvStore: {}", binding).into(),
-            Self::InvalidMetadata(message) => {
+impl From<KvError> for JsValue {
+    fn from(val: KvError) -> Self {
+        match val {
+            KvError::JavaScript(value) => value,
+            KvError::Serialization(e) => format!("KvError::Serialization: {}", e.to_string()).into(),
+            KvError::InvalidKvStore(binding) => format!("KvError::InvalidKvStore: {}", binding).into(),
+            KvError::InvalidMetadata(message) => {
                 format!("KvError::InvalidMetadata: {}", message).into()
             }
         }

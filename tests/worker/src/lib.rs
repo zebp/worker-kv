@@ -13,7 +13,7 @@ async fn step_one(kv: KvStore) -> Result<(), KvError> {
 
     // If there are more than 1000 entries we know that the kv is in an invalid state.
     if !list_res.list_complete {
-        Err(make_kv_error("list is incomplete, more than 1000 entries"))?;
+        return Err(make_kv_error("list is incomplete, more than 1000 entries"));
     }
 
     // Clear the kv store by deleting the first 1000 keys, which should be all of them.
@@ -44,7 +44,7 @@ async fn step_two(kv: KvStore) -> Result<(), KvError> {
 
     // If there are more than 1000 entries we know that the kv is in an invalid state.
     if !res.list_complete {
-        Err(make_kv_error("list is incomplete, more than 1000 entries"))?;
+        return Err(make_kv_error("list is incomplete, more than 1000 entries"));
     }
 
     let keys = &res.keys;
@@ -105,10 +105,10 @@ fn check_key<T: DeserializeOwned + Eq + Debug>(
         .clone()
         .map(|value| serde_json::from_value(value).unwrap());
     if deserialized_meta != metadata {
-        Err(make_kv_error(&format!(
+        return Err(make_kv_error(&format!(
             "metadata doesn't match for {}",
             name
-        )))?
+        )))
     }
 
     match (key.expiration.is_some(), expiration_expected) {
