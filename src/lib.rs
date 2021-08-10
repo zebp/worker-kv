@@ -6,7 +6,7 @@
 //! let kv = KvStore::create("Example")?;
 //!
 //! // Insert a new entry into the kv.
-//! kv.put("example_key", "example_value")
+//! kv.put("example_key", "example_value")?
 //!     .metadata(vec![1, 2, 3, 4]) // Use some arbitrary serialiazable metadata
 //!     .execute()
 //!     .await?;
@@ -41,6 +41,26 @@ impl KvStore {
     /// Creates a new [`KvStore`] with the binding specified in your `wrangler.toml`.
     pub fn create(binding: &str) -> Result<Self, KvError> {
         let this = get(&global(), binding.as_ref())?;
+
+        // Ensures that the kv store exists.
+        if this.is_undefined() {
+            Err(KvError::InvalidKvStore(binding.into()))
+        } else {
+            Ok(Self {
+                get_function: get(&this, "get")?.into(),
+                get_with_meta_function: get(&this, "getWithMetadata")?.into(),
+                put_function: get(&this, "put")?.into(),
+                list_function: get(&this, "list")?.into(),
+                delete_function: get(&this, "delete")?.into(),
+                this: this.into(),
+            })
+        }
+    }
+
+    /// Creates a new [`KvStore`] with the binding specified in your `wrangler.toml`, using an
+    /// alternative `this` value for arbitrary binding contexts.
+    pub fn from_this(this: &JsValue, binding: &str) -> Result<Self, KvError> {
+        let this = get(&this, binding.as_ref())?;
 
         // Ensures that the kv store exists.
         if this.is_undefined() {
