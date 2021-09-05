@@ -20,7 +20,7 @@ mod builder;
 
 pub use builder::*;
 
-use js_sys::{global, Function, Object, Promise, Reflect};
+use js_sys::{Function, Object, Promise, Reflect, Uint8Array, global};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::Value;
 use wasm_bindgen::JsValue;
@@ -119,6 +119,22 @@ impl KvStore {
             put_function: self.put_function.clone(),
             name: JsValue::from(name),
             value: value.raw_kv_value()?,
+            expiration: None,
+            expiration_ttl: None,
+            metadata: None,
+        })
+    }
+
+    /// Puts the specified slice into the kv store.
+    pub fn put_slice(&self, name: &str, value: &[u8]) -> Result<PutOptionsBuilder, KvError> {
+        let typed_array = Uint8Array::new_with_length(value.len() as u32);
+        typed_array.copy_from(&value);
+        let value: JsValue = typed_array.buffer().into();
+        Ok(PutOptionsBuilder {
+            this: self.this.clone(),
+            put_function: self.put_function.clone(),
+            name: JsValue::from(name),
+            value,
             expiration: None,
             expiration_ttl: None,
             metadata: None,
