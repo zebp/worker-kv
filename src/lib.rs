@@ -99,7 +99,11 @@ impl KvStore {
         let pair = JsFuture::from(promise).await?;
 
         let metadata = get(&pair, "metadata")?;
-        let value = get(&pair, "value")?;
+        let value = get(&pair, "value")?.as_string();
+
+        if value.is_none() {
+            return Ok(None);
+        }
 
         if metadata.is_null() || metadata.is_undefined() {
             return Err(KvError::InvalidMetadata(
@@ -108,7 +112,7 @@ impl KvStore {
         }
 
         let metadata = metadata.into_serde::<M>()?;
-        let inner = value.as_string().map(|raw| (KvValue(raw), metadata));
+        let inner = value.map(|raw| (KvValue(raw), metadata));
         Ok(inner)
     }
 
