@@ -3,6 +3,6 @@
   "rust-analyzer.linkedProjects": [
     "Cargo.toml",
     "example/Cargo.toml",
-    "tests/worker/Cargo.toml"
+    "tests/worker_kv_test/Cargo.toml"
   ]
 }

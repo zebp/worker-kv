@@ -8,54 +8,14 @@ use std::{
 
 use serde::Deserialize;
 
-/// The duration slept to allow for the changes to the kv store to propagate.
-const SLEEP_DURATION: Duration = Duration::from_secs(60);
-
 #[tokio::test]
 async fn integration_test() {
-    let account_id = std::env::var("ACCOUNT_ID").expect("ACCOUNT_ID not specified");
-    let kv_id = std::env::var("KV_ID").expect("KV_ID not specified");
-    let mut wrangler_process =
-        spawn_wrangler(&account_id, &kv_id).expect("unable to write wrangler config");
+    let mut miniflare_process =
+        start_miniflare().expect("unable to spawn miniflare, did you install node modules?");
 
     wait_for_worker_to_spawn();
 
-    let resp: Response = reqwest::get("http://127.0.0.1:8787/0")
-        .await
-        .unwrap()
-        .json()
-        .await
-        .unwrap();
-
-    match resp {
-        Response::Successful { success } => {
-            assert!(success, "step one request failed");
-        }
-        Response::Error { error } => {
-            panic!("{}", error);
-        }
-    }
-
-    // Sleep a minute to allow for kv changes to propagate.
-    tokio::time::sleep(SLEEP_DURATION).await;
-
-    let resp: Response = reqwest::get("http://127.0.0.1:8787/1")
-        .await
-        .unwrap()
-        .json()
-        .await
-        .unwrap();
-
-    match resp {
-        Response::Successful { success } => {
-            assert!(success, "step one request failed");
-        }
-        Response::Error { error } => {
-            panic!("{}", error);
-        }
-    }
-
-    wrangler_process
+    miniflare_process
         .kill()
         .expect("could not kill child process");
 }
@@ -78,22 +38,17 @@ fn wait_for_worker_to_spawn() {
     panic!("timed out connecting to worker")
 }
 
-/// Formats the wrangler template and writes it to the test worker.
-fn spawn_wrangler(account_id: &str, kv_id: &str) -> io::Result<Child> {
-    let contents = include_str!("wrangler.template.toml")
-        .replace("ACCOUNT_ID", account_id)
-        .replace("KV_ID", kv_id);
-    std::fs::write("tests/worker/wrangler.toml", contents)?;
-
-    Command::new("wrangler")
-        .arg("dev")
-        .current_dir("tests/worker")
+fn start_miniflare() -> io::Result<Child> {
+    Command::new("../node_modules/.bin/miniflare")
+        .args(&["-c", "wrangler.toml", "-k", "test", "--kv-persist"])
+        .current_dir("tests/worker_kv_test")
         .spawn()
 }
 
-#[derive(Debug, Clone, Deserialize)]
-#[serde(untagged)]
-enum Response {
-    Successful { success: bool },
-    Error { error: String },
+#[derive(Debug, Deserialize)]
+enum TestResult {
+    #[serde(rename = "success")]
+    Success(String),
+    #[serde(rename = "failure")]
+    Failure(String),
 }

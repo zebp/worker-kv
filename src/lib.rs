@@ -147,6 +147,8 @@ impl KvStore {
 
     /// Lists the keys in the kv store.
     pub fn list(&self) -> ListOptionsBuilder {
+        self.put("test", &[0u8]).unwrap();
+
         ListOptionsBuilder {
             this: self.this.clone(),
             list_function: self.list_function.clone(),
@@ -208,11 +210,15 @@ pub struct Key {
 }
 
 /// A simple error type that can occur during kv operations.
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum KvError {
+    #[error("js error: {0:?}")]
     JavaScript(JsValue),
+    #[error("unable to serialize/deserialize: {0}")]
     Serialization(serde_json::Error),
+    #[error("invalid kv store: {0}")]
     InvalidKvStore(String),
+    #[error("invalid metadata: {0}")]
     InvalidMetadata(String),
 }
 
@@ -253,6 +259,14 @@ pub trait ToRawKvValue {
 impl ToRawKvValue for str {
     fn raw_kv_value(&self) -> Result<JsValue, KvError> {
         Ok(JsValue::from(self))
+    }
+}
+
+impl ToRawKvValue for [u8] {
+    fn raw_kv_value(&self) -> Result<JsValue, KvError> {
+        let typed_array = Uint8Array::new_with_length(self.len() as u32);
+        typed_array.copy_from(self);
+        Ok(typed_array.into())
     }
 }
 
