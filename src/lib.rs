@@ -125,8 +125,8 @@ impl KvStore {
         })
     }
 
-    /// Puts the specified slice into the kv store.
-    pub fn put_slice(&self, name: &str, value: &[u8]) -> Result<PutOptionsBuilder, KvError> {
+    /// Puts the specified byte slice into the kv store.
+    pub fn put_bytes(&self, name: &str, value: &[u8]) -> Result<PutOptionsBuilder, KvError> {
         let typed_array = Uint8Array::new_with_length(value.len() as u32);
         typed_array.copy_from(&value);
         let value: JsValue = typed_array.buffer().into();
