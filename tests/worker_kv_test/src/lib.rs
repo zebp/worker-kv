@@ -7,6 +7,18 @@ type TestResult = std::result::Result<String, TestError>;
 
 mod utils;
 
+macro_rules! kv_assert_eq {
+    ($left: expr, $right: expr) => {{
+        let left = &$left;
+        let right = &$right;
+        if left != right {
+            Err(TestError::Other(format!("{:#?} != {:#?}", left, right)))
+        } else {
+            Ok(())
+        }
+    }};
+}
+
 #[event(fetch)]
 pub async fn main(req: Request, env: Env) -> Result<Response> {
     // Optionally, get more helpful error messages written to the console in the case of a panic.
@@ -18,6 +30,10 @@ pub async fn main(req: Request, env: Env) -> Result<Response> {
     Router::new(store)
         .get_async("/get", |req, ctx| wrap(req, ctx, get))
         .get_async("/get-not-found", |req, ctx| wrap(req, ctx, get_not_found))
+        .get_async("/list-keys", |req, ctx| wrap(req, ctx, list_keys))
+        .get_async("/put-simple", |req, ctx| wrap(req, ctx, put_simple))
+        .get_async("/put-metadata", |req, ctx| wrap(req, ctx, put_metadata))
+        .get_async("/put-expiration", |req, ctx| wrap(req, ctx, put_expiration))
         .run(req, env)
         .await
 }
@@ -42,6 +58,56 @@ async fn get_not_found(_: Request, ctx: RouteContext<KvStore>) -> TestResult {
         Some(_) => Err(TestError::Other("unexpected value present".into())),
         None => Ok("passed".into()),
     })
+}
+
+async fn list_keys(_: Request, ctx: RouteContext<KvStore>) -> TestResult {
+    let store = ctx.data().unwrap();
+    let list_res = store.list().execute().await?;
+
+    // TODO: Test cursor and things.
+    kv_assert_eq!(list_res.keys.len(), 1)?;
+
+    Ok("passed".into())
+}
+
+async fn put_simple(_: Request, ctx: RouteContext<KvStore>) -> TestResult {
+    let store = ctx.data().unwrap();
+    store.put("put_a", "test")?.execute().await?;
+
+    let val = store.get("put_a").await?.unwrap();
+    kv_assert_eq!(val.as_string(), "test")?;
+
+    Ok("passed".into())
+}
+
+async fn put_metadata(_: Request, ctx: RouteContext<KvStore>) -> TestResult {
+    let store = ctx.data().unwrap();
+    store.put("put_b", "test")?.metadata(100)?.execute().await?;
+
+    let (val, meta) = store.get_with_metadata::<usize>("put_b").await?.unwrap();
+    kv_assert_eq!(val.as_string(), "test")?;
+    kv_assert_eq!(meta, 100)?;
+
+    Ok("passed".into())
+}
+
+async fn put_expiration(_: Request, ctx: RouteContext<KvStore>) -> TestResult {
+    const EXPIRATION: u64 = 2000000000;
+    let store = ctx.data().unwrap();
+    store.put("put_c", "test")?.expiration(EXPIRATION).execute().await?;
+
+    let val = store.get("put_a").await?.unwrap();
+    kv_assert_eq!(val.as_string(), "test")?;
+
+    let list = store.list().prefix("put_c".into()).execute().await?;
+    let key = list
+        .keys
+        .into_iter()
+        .find(|key| key.name == "put_c")
+        .unwrap();
+    kv_assert_eq!(key.expiration, Some(EXPIRATION))?;
+
+    Ok("passed".into())
 }
 
 async fn wrap<T>(

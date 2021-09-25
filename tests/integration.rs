@@ -1,11 +1,13 @@
 use std::{
     io::{self, ErrorKind},
     net::{SocketAddr, TcpStream},
+    path::Path,
     process::{Child, Command},
     str::FromStr,
     time::{Duration, Instant},
 };
 
+use fs_extra::dir::CopyOptions;
 use serde::Deserialize;
 
 #[tokio::test]
@@ -14,6 +16,26 @@ async fn integration_test() {
         start_miniflare().expect("unable to spawn miniflare, did you install node modules?");
 
     wait_for_worker_to_spawn();
+
+    let endpoints = [
+        "get",
+        "get-not-found",
+        "list-keys",
+        "put-simple",
+        "put-metadata",
+        "put-expiration",
+    ];
+
+    for endpoint in endpoints {
+        let text_res = reqwest::get(&format!("http://localhost:8787/{}", endpoint))
+            .await
+            .expect("unable to send request")
+            .text()
+            .await;
+
+        assert!(text_res.is_ok(), "{} failed", endpoint);
+        assert_eq!(text_res.unwrap(), "passed".to_string());
+    }
 
     miniflare_process
         .kill()
@@ -39,6 +61,22 @@ fn wait_for_worker_to_spawn() {
 }
 
 fn start_miniflare() -> io::Result<Child> {
+    let mf_path = Path::new("tests/worker_kv_test/.mf");
+
+    if mf_path.exists() {
+        std::fs::remove_dir_all(mf_path)?;
+    }
+
+    fs_extra::dir::copy(
+        "tests/worker_kv_test/.mf-init",
+        mf_path,
+        &CopyOptions {
+            content_only: true,
+            ..CopyOptions::new()
+        },
+    )
+    .unwrap();
+
     Command::new("../node_modules/.bin/miniflare")
         .args(&["-c", "wrangler.toml", "-k", "test", "--kv-persist"])
         .current_dir("tests/worker_kv_test")
