@@ -47,7 +47,7 @@ fn wait_for_worker_to_spawn() {
     let now = Instant::now();
     let addr = SocketAddr::from_str("0.0.0.0:8787").unwrap();
 
-    while Instant::now() - now <= Duration::from_secs(60) {
+    while Instant::now() - now <= Duration::from_secs(5 * 60) {
         match TcpStream::connect_timeout(&addr, Duration::from_secs(5)) {
             Ok(_) => return,
             Err(e)

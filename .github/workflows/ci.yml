@@ -44,6 +44,12 @@ jobs:
         with:
           command: check
 
+      - name: Build test worker
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --target wasm32-unknown-unknown
+
       - name: Run cargo test
         uses: actions-rs/cargo@v1
         env:
