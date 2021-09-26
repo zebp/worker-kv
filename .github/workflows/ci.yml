@@ -33,6 +33,9 @@ jobs:
         working-directory: ./tests
         run: npm install
 
+      - name: Install wasmpack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
       - name: Check formatting
         uses: actions-rs/cargo@v1
         with:
@@ -43,12 +46,6 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: check
-
-      - name: Build test worker
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --target wasm32-unknown-unknown
 
       - name: Run cargo test
         uses: actions-rs/cargo@v1
