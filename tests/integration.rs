@@ -11,10 +11,17 @@ use fs_extra::dir::CopyOptions;
 use serde::Deserialize;
 
 #[tokio::test]
+#[allow(clippy::needless_collect)]
 async fn integration_test() {
-    let mut miniflare_process =
-        start_miniflare().expect("unable to spawn miniflare, did you install node modules?");
+    let node_procs_to_ignore = psutil::process::processes()
+        .unwrap()
+        .into_iter()
+        .filter_map(|r| r.ok())
+        .filter(|process| process.name().unwrap() == "node")
+        .map(|p| p.pid())
+        .collect::<Vec<_>>();
 
+    start_miniflare().expect("unable to spawn miniflare, did you install node modules?");
     wait_for_worker_to_spawn();
 
     let endpoints = [
@@ -37,9 +44,13 @@ async fn integration_test() {
         assert_eq!(text_res.unwrap(), "passed".to_string());
     }
 
-    miniflare_process
-        .kill()
-        .expect("could not kill child process");
+    let processes = psutil::process::processes().unwrap();
+
+    for process in processes.into_iter().filter_map(|r| r.ok()) {
+        if !node_procs_to_ignore.contains(&process.pid()) && process.name().unwrap() == "node" {
+            let _ = process.send_signal(psutil::process::Signal::SIGQUIT);
+        }
+    }
 }
 
 /// Waits for wrangler to spawn it's http server.
