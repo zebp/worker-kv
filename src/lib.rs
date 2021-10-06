@@ -13,7 +13,7 @@
 //!
 //! // NOTE: kv changes can take a minute to become visible to other workers.
 //! // Get that same metadata.
-//! let (value, metadata) = kv.get_with_metadata::<Vec<usize>>("example_key").await?.unwrap();
+//! let (value, metadata) = kv.get("example_key").text_with_metadata::<Vec<usize>>().await?;
 //! ```
 #[forbid(missing_docs)]
 mod builder;
@@ -21,7 +21,7 @@ mod builder;
 pub use builder::*;
 
 use js_sys::{global, Function, Object, Promise, Reflect, Uint8Array};
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use wasm_bindgen::JsValue;
 use wasm_bindgen_futures::JsFuture;
@@ -78,42 +78,15 @@ impl KvStore {
     }
 
     /// Fetches the value from the kv store by name.
-    pub async fn get(&self, name: &str) -> Result<Option<KvValue>, KvError> {
-        let name = JsValue::from(name);
-        let promise: Promise = self.get_function.call1(&self.this, &name)?.into();
-        let inner = JsFuture::from(promise)
-            .await
-            .map_err(KvError::from)?
-            .as_string()
-            .map(KvValue);
-        Ok(inner)
-    }
-
-    /// Fetches the value and associated metadata from the kv store by name.
-    pub async fn get_with_metadata<M: DeserializeOwned>(
-        &self,
-        name: &str,
-    ) -> Result<Option<(KvValue, M)>, KvError> {
-        let name = JsValue::from(name);
-        let promise: Promise = self.get_with_meta_function.call1(&self.this, &name)?.into();
-        let pair = JsFuture::from(promise).await?;
-
-        let metadata = get(&pair, "metadata")?;
-        let value = get(&pair, "value")?.as_string();
-
-        if value.is_none() {
-            return Ok(None);
+    pub fn get(&self, name: &str) -> GetOptionsBuilder {
+        GetOptionsBuilder {
+            this: self.this.clone(),
+            get_function: self.get_function.clone(),
+            get_with_meta_function: self.get_with_meta_function.clone(),
+            name: JsValue::from(name),
+            cache_ttl: None,
+            value_type: None,
         }
-
-        if metadata.is_null() || metadata.is_undefined() {
-            return Err(KvError::InvalidMetadata(
-                "metadata was undefined or null".into(),
-            ));
-        }
-
-        let metadata = metadata.into_serde::<M>()?;
-        let inner = value.map(|raw| (KvValue(raw), metadata));
-        Ok(inner)
     }
 
     /// Puts data into the kv store.
@@ -167,25 +140,6 @@ impl KvStore {
     }
 }
 
-/// A value fetched via a get request.
-#[derive(Debug, Clone)]
-pub struct KvValue(String);
-
-impl KvValue {
-    /// Gets the value as a string.
-    pub fn as_string(self) -> String {
-        self.0
-    }
-    /// Tries to eserialize the inner text to the generic type.
-    pub fn as_json<T: DeserializeOwned>(self) -> Result<T, KvError> {
-        serde_json::from_str(&self.0).map_err(KvError::from)
-    }
-    /// Gets the value as a byte slice.
-    pub fn as_bytes(&self) -> &[u8] {
-        self.0.as_bytes()
-    }
-}
-
 /// The response for listing the elements in a KV store.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ListResponse {
@@ -218,8 +172,6 @@ pub enum KvError {
     Serialization(serde_json::Error),
     #[error("invalid kv store: {0}")]
     InvalidKvStore(String),
-    #[error("invalid metadata: {0}")]
-    InvalidMetadata(String),
 }
 
 impl From<KvError> for JsValue {
@@ -231,9 +183,6 @@ impl From<KvError> for JsValue {
             }
             KvError::InvalidKvStore(binding) => {
                 format!("KvError::InvalidKvStore: {}", binding).into()
-            }
-            KvError::InvalidMetadata(message) => {
-                format!("KvError::InvalidMetadata: {}", message).into()
             }
         }
     }

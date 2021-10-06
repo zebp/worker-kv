@@ -29,7 +29,7 @@ kv.put("example_key", "example_value")?
 
 // NOTE: kv changes can take a minute to become visible to other workers.
 // Get that same metadata.
-let (value, metdata) = kv.get_with_metadata::<Vec<usize>>("example_key").await?;
+let (value, metadata) = kv.get("example_key").text_with_metadata::<Vec<usize>>().await?;
 ```
 
 For a more complete example check out the full [example](example).

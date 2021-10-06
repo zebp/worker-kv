@@ -42,17 +42,18 @@ async fn get(_: Request, ctx: RouteContext<KvStore>) -> TestResult {
     let store = ctx.data().unwrap();
     store
         .get("simple")
+        .text()
         .await
         .map_err(TestError::from)
         .and_then(|v| match v {
-            Some(e) => Ok(e.as_string()),
+            Some(e) => Ok(e),
             None => Err(TestError::Other("no value found".into())),
         })
 }
 
 async fn get_not_found(_: Request, ctx: RouteContext<KvStore>) -> TestResult {
     let store = ctx.data().unwrap();
-    let value = store.get("not_found").await;
+    let value = store.get("not_found").text().await;
 
     value.map_err(TestError::from).and_then(|v| match v {
         Some(_) => Err(TestError::Other("unexpected value present".into())),
@@ -74,8 +75,8 @@ async fn put_simple(_: Request, ctx: RouteContext<KvStore>) -> TestResult {
     let store = ctx.data().unwrap();
     store.put("put_a", "test")?.execute().await?;
 
-    let val = store.get("put_a").await?.unwrap();
-    kv_assert_eq!(val.as_string(), "test")?;
+    let val = store.get("put_a").text().await?.unwrap();
+    kv_assert_eq!(val, "test")?;
 
     Ok("passed".into())
 }
@@ -84,9 +85,12 @@ async fn put_metadata(_: Request, ctx: RouteContext<KvStore>) -> TestResult {
     let store = ctx.data().unwrap();
     store.put("put_b", "test")?.metadata(100)?.execute().await?;
 
-    let (val, meta) = store.get_with_metadata::<usize>("put_b").await?.unwrap();
-    kv_assert_eq!(val.as_string(), "test")?;
-    kv_assert_eq!(meta, 100)?;
+    let (val, meta) = store
+        .get("put_b")
+        .text_with_metadata::<usize>()
+        .await?;
+    kv_assert_eq!(val.unwrap(), "test")?;
+    kv_assert_eq!(meta.unwrap(), 100)?;
 
     Ok("passed".into())
 }
@@ -94,10 +98,14 @@ async fn put_metadata(_: Request, ctx: RouteContext<KvStore>) -> TestResult {
 async fn put_expiration(_: Request, ctx: RouteContext<KvStore>) -> TestResult {
     const EXPIRATION: u64 = 2000000000;
     let store = ctx.data().unwrap();
-    store.put("put_c", "test")?.expiration(EXPIRATION).execute().await?;
+    store
+        .put("put_c", "test")?
+        .expiration(EXPIRATION)
+        .execute()
+        .await?;
 
-    let val = store.get("put_a").await?.unwrap();
-    kv_assert_eq!(val.as_string(), "test")?;
+    let val = store.get("put_a").text().await?.unwrap();
+    kv_assert_eq!(val, "test")?;
 
     let list = store.list().prefix("put_c".into()).execute().await?;
     let key = list
