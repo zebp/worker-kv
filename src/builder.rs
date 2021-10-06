@@ -207,7 +207,10 @@ impl GetOptionsBuilder {
     where
         M: DeserializeOwned,
     {
-        let (value, metadata) = self.value_type(GetValueType::Text).get_with_metadata().await?;
+        let (value, metadata) = self
+            .value_type(GetValueType::Text)
+            .get_with_metadata()
+            .await?;
         Ok((value.as_string(), metadata))
     }
 
@@ -217,7 +220,10 @@ impl GetOptionsBuilder {
         T: DeserializeOwned,
         M: DeserializeOwned,
     {
-        let (value, metadata) = self.value_type(GetValueType::Json).get_with_metadata().await?;
+        let (value, metadata) = self
+            .value_type(GetValueType::Json)
+            .get_with_metadata()
+            .await?;
         Ok((
             if value.is_null() {
                 None
@@ -233,7 +239,10 @@ impl GetOptionsBuilder {
     where
         M: DeserializeOwned,
     {
-        let (value, metadata) = self.value_type(GetValueType::ArrayBuffer).get_with_metadata().await?;
+        let (value, metadata) = self
+            .value_type(GetValueType::ArrayBuffer)
+            .get_with_metadata()
+            .await?;
 
         if ArrayBuffer::instanceof(&value) {
             let buffer = ArrayBuffer::from(value);
