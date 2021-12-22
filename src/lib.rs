@@ -211,17 +211,21 @@ impl ToRawKvValue for str {
     }
 }
 
-impl ToRawKvValue for [u8] {
-    fn raw_kv_value(&self) -> Result<JsValue, KvError> {
-        let typed_array = Uint8Array::new_with_length(self.len() as u32);
-        typed_array.copy_from(self);
-        Ok(typed_array.into())
-    }
-}
-
 impl<T: Serialize> ToRawKvValue for T {
     fn raw_kv_value(&self) -> Result<JsValue, KvError> {
-        JsValue::from_serde(self).map_err(Into::into)
+        let value = JsValue::from_serde(self)?;
+
+        if let Some(_) = value.as_string() {
+            Ok(value)
+        } else if let Some(number) = value.as_f64() {
+            Ok(JsValue::from(number.to_string()))
+        } else if let Some(boolean) = value.as_bool() {
+            Ok(JsValue::from(boolean.to_string()))
+        } else {
+            js_sys::JSON::stringify(&value)
+                .map(JsValue::from)
+                .map_err(Into::into)
+        }
     }
 }
 
