@@ -120,8 +120,6 @@ impl KvStore {
 
     /// Lists the keys in the kv store.
     pub fn list(&self) -> ListOptionsBuilder {
-        self.put("test", &[0u8]).unwrap();
-
         ListOptionsBuilder {
             this: self.this.clone(),
             list_function: self.list_function.clone(),
