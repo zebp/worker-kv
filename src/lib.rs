@@ -178,9 +178,7 @@ impl From<KvError> for JsValue {
     fn from(val: KvError) -> Self {
         match val {
             KvError::JavaScript(value) => value,
-            KvError::Serialization(e) => {
-                format!("KvError::Serialization: {}", e.to_string()).into()
-            }
+            KvError::Serialization(e) => format!("KvError::Serialization: {}", e).into(),
             KvError::InvalidKvStore(binding) => {
                 format!("KvError::InvalidKvStore: {}", binding).into()
             }
@@ -215,7 +213,7 @@ impl<T: Serialize> ToRawKvValue for T {
     fn raw_kv_value(&self) -> Result<JsValue, KvError> {
         let value = JsValue::from_serde(self)?;
 
-        if let Some(_) = value.as_string() {
+        if value.as_string().is_some() {
             Ok(value)
         } else if let Some(number) = value.as_f64() {
             Ok(JsValue::from(number.to_string()))
