@@ -8,6 +8,7 @@ use crate::{KvError, ListResponse};
 
 /// A builder to configure put requests.
 #[derive(Debug, Clone, Serialize)]
+#[must_use = "PutOptionsBuilder does nothing until you 'execute' it"]
 pub struct PutOptionsBuilder {
     #[serde(skip)]
     pub(crate) this: Object,
@@ -59,6 +60,7 @@ impl PutOptionsBuilder {
 
 /// A builder to configure list requests.
 #[derive(Debug, Clone, Serialize)]
+#[must_use = "ListOptionsBuilder does nothing until you 'execute' it"]
 pub struct ListOptionsBuilder {
     #[serde(skip)]
     pub(crate) this: Object,
@@ -105,6 +107,7 @@ impl ListOptionsBuilder {
 
 /// A builder to configure get requests.
 #[derive(Debug, Clone, Serialize)]
+#[must_use = "GetOptionsBuilder does nothing until you 'get' it"]
 pub struct GetOptionsBuilder {
     #[serde(skip)]
     pub(crate) this: Object,
