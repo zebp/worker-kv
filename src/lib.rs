@@ -25,6 +25,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use wasm_bindgen::JsValue;
 use wasm_bindgen_futures::JsFuture;
+use gloo_utils::format::JsValueSerdeExt;
 
 /// A binding to a Cloudflare KvStore.
 #[derive(Clone)]
