@@ -1,3 +1,4 @@
+use gloo_utils::format::JsValueSerdeExt;
 use js_sys::{ArrayBuffer, Function, Object, Promise, Uint8Array};
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json::Value;
