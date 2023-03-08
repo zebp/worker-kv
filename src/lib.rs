@@ -20,7 +20,6 @@ mod builder;
 
 pub use builder::*;
 
-use gloo_utils::format::JsValueSerdeExt;
 use js_sys::{global, Function, Object, Promise, Reflect, Uint8Array};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -177,9 +176,9 @@ impl From<KvError> for JsValue {
     fn from(val: KvError) -> Self {
         match val {
             KvError::JavaScript(value) => value,
-            KvError::Serialization(e) => format!("KvError::Serialization: {}", e).into(),
+            KvError::Serialization(e) => format!("KvError::Serialization: {e}").into(),
             KvError::InvalidKvStore(binding) => {
-                format!("KvError::InvalidKvStore: {}", binding).into()
+                format!("KvError::InvalidKvStore: {binding}").into()
             }
         }
     }
@@ -210,7 +209,7 @@ impl ToRawKvValue for str {
 
 impl<T: Serialize> ToRawKvValue for T {
     fn raw_kv_value(&self) -> Result<JsValue, KvError> {
-        let value = JsValue::from_serde(self)?;
+        let value = serde_wasm_bindgen::to_value(self).map_err(JsValue::from)?;
 
         if value.as_string().is_some() {
             Ok(value)
