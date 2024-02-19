@@ -46,7 +46,9 @@ impl PutOptionsBuilder {
     }
     /// Puts the value in the kv store.
     pub async fn execute(self) -> Result<(), KvError> {
-        let options_object = serde_wasm_bindgen::to_value(&self).map_err(JsValue::from)?;
+        let options_object = self
+            .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
+            .map_err(JsValue::from)?;
         let promise: Promise = self
             .put_function
             .call3(&self.this, &self.name, &self.value, &options_object)?
