@@ -209,7 +209,9 @@ impl ToRawKvValue for str {
 
 impl<T: Serialize> ToRawKvValue for T {
     fn raw_kv_value(&self) -> Result<JsValue, KvError> {
-        let value = serde_wasm_bindgen::to_value(self).map_err(JsValue::from)?;
+        let value = self
+            .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
+            .map_err(JsValue::from)?;
 
         if value.as_string().is_some() {
             Ok(value)
