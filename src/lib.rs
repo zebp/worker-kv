@@ -37,6 +37,9 @@ pub struct KvStore {
     pub(crate) delete_function: Function,
 }
 
+unsafe impl Send for KvStore {}
+unsafe impl Sync for KvStore {}
+
 impl KvStore {
     /// Creates a new [`KvStore`] with the binding specified in your `wrangler.toml`.
     pub fn create(binding: &str) -> Result<Self, KvError> {
